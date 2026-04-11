@@ -30,7 +30,9 @@ def generate_launch_description():
     use_respawn = LaunchConfiguration('use_respawn')
     log_level = LaunchConfiguration('log_level')
 
-    remappings = [('/tf', 'tf'),
+    remappings = [
+        #('/odom', '/odom_rf2o'),
+        ('/tf', 'tf'),
                   ('/tf_static', 'tf_static')]
 
     # Create our own temporary YAML files that include substitutions

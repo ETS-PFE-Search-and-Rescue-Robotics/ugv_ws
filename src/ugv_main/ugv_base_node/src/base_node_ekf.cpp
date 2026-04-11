@@ -87,7 +87,7 @@ public:
         // Declare parameters
         this->declare_parameter<std::string>("odom_frame", "odom");
         this->declare_parameter<std::string>("base_footprint_frame", "base_footprint");
-        this->declare_parameter<bool>("pub_odom_tf", false);
+        this->declare_parameter<bool>("pub_odom_tf", true);
 
         // Get parameters
         this->get_parameter<bool>("pub_odom_tf", pub_odom_tf_);
@@ -100,7 +100,7 @@ public:
         odom_raw_subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("odom/odom_raw", 50, std::bind(&OdomPublisher::handle_odom, this, _1));
 
         // Create publisher
-        odom_publisher_ = this->create_publisher<nav_msgs::msg::Odometry>("odom_raw", 5);
+        odom_publisher_ = this->create_publisher<nav_msgs::msg::Odometry>("odom", 5);
 
         // Create timer
         timer_ = this->create_wall_timer(100ms, std::bind(&OdomPublisher::publish_odom, this));

@@ -109,10 +109,72 @@ class ugv_bringup(Node):
         self.base_controller = BaseController(serial_port, 115200)
         # Timer to periodically execute the feedback loop
         self.feedback_timer = self.create_timer(0.001, self.feedback_loop)
+        #Dernière valeur lu par l'odométrie pour détecter des changements trop grands
+        self.last_valid_data = None
+        self.last_time = None
 
     # Main loop for reading sensor feedback and publishing it to ROS topics
     def feedback_loop(self):
-        self.base_controller.feedback_data()
+        data = self.base_controller.feedback_data()
+
+        # Si le JSON est invalide ,ignorer pour ce frame
+        if data is None:
+            self.get_logger().warn("data is None")
+            return
+        else:
+            self.get_logger().warn(f"{data}")
+        
+        # Si les données ne sont pas convertissable en dictionnaire, on ignore pour ce frame
+        if not isinstance(data, dict):
+            self.get_logger().warn(f"{data} not instance of dict")
+            return
+
+        # Vérifier que toutes les clés existent
+        required = ["ax","ay","az","gx","gy","gz","mx","my","mz","odl","odr","v", "T"]
+        for key in required:
+            if key not in data:
+                self.get_logger().warn(f"Missing key {key}, skipping frame")
+                return
+            
+        #Sauvegarde initiale
+        now = time.time()
+        if self.last_valid_data is None:
+            self.last_valid_data = data
+            self.last_time = now
+
+        dt = now - self.last_time
+        if dt <= 0:
+            return
+
+        # 5. Validation ODOM : pas de saut de roue
+        odl_prev = self.last_valid_data["odl"]
+        odr_prev = self.last_valid_data["odr"]
+        odl_new = data["odl"]
+        odr_new = data["odr"]
+
+        # Seuil : (à ajuster)
+        MAX_DELTA = 300  
+
+        if abs(odl_new - odl_prev) > MAX_DELTA or abs(odr_new - odr_prev) > MAX_DELTA:
+            # Frame invalide → on ignore
+            self.get_logger().warn(f"abs({odl_new} - {odl_prev}) > {MAX_DELTA} or abs({odr_new} - {odr_prev}) > MAX_DELTA")
+            return
+
+        # 6. Validation vitesse max
+        v_left = (odl_new - odl_prev) / dt
+        v_right = (odr_new - odr_prev) / dt
+
+        MAX_SPEED = 10.0  # m/s
+        if abs(v_left) > MAX_SPEED or abs(v_right) > MAX_SPEED:
+            self.get_logger().warn(f"abs({v_left}) > {MAX_SPEED} or abs({v_right}) > {MAX_SPEED}")
+            return
+
+        # 7. Validation IMU : spike gyro
+        gzData = abs(data["gz"])
+        if gzData > 500:  # seuil anti-spike
+            self.get_logger().warn(f"abs({gzData}) > 500")
+            return
+        
         if self.base_controller.base_data["T"] == 1001:  # Check if the feedback type is correct
             self.publish_imu_data_raw()  # Publish IMU raw data
             self.publish_imu_mag()  # Publish magnetic field data
@@ -156,6 +218,7 @@ class ugv_bringup(Node):
     # Publish odometry data to the ROS topic "odom/odom_raw"
     def publish_odom_raw(self):
         odom_raw_data = self.base_controller.base_data
+        print(odom_raw_data)
         array = [odom_raw_data["odl"]/100, odom_raw_data["odr"]/100]
         msg = Float32MultiArray(data=array)
         self.odom_publisher_.publish(msg)  # Publish the odometry data

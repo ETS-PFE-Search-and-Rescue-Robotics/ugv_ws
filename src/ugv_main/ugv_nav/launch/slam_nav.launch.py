@@ -31,7 +31,7 @@ def generate_launch_description():
     log_level = LaunchConfiguration('log_level')
 
     remappings = [
-        #('/odom', '/odom_rf2o'),
+        ('/odom', '/odom_rf2o'),
         ('/tf', 'tf'),
                   ('/tf_static', 'tf_static')]
 

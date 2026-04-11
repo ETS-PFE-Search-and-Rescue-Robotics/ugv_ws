@@ -164,7 +164,7 @@ class ugv_bringup(Node):
         v_left = (odl_new - odl_prev) / dt
         v_right = (odr_new - odr_prev) / dt
 
-        MAX_SPEED = 10.0  # m/s
+        MAX_SPEED = 50.0  # m/s
         if abs(v_left) > MAX_SPEED or abs(v_right) > MAX_SPEED:
             self.get_logger().warn(f"abs({v_left}) > {MAX_SPEED} or abs({v_right}) > {MAX_SPEED}")
             return
@@ -180,6 +180,10 @@ class ugv_bringup(Node):
             self.publish_imu_mag()  # Publish magnetic field data
             self.publish_odom_raw()  # Publish odometry data
             self.publish_voltage()  # Publish voltage data
+            
+            #Sauvegarder les données pour valider le prochain frame
+            self.last_valid_data = data
+            self.last_time = now
 
     # Publish IMU data to the ROS topic "imu/data_raw"
     def publish_imu_data_raw(self):

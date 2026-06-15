@@ -4,7 +4,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, GroupAction,
-                            IncludeLaunchDescription, SetEnvironmentVariable)
+                            IncludeLaunchDescription, SetEnvironmentVariable, TimerAction)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -31,9 +31,8 @@ def generate_launch_description():
     log_level = LaunchConfiguration('log_level')
 
     remappings = [
-        ('/odom', '/odom_rf2o'),
         ('/tf', 'tf'),
-                  ('/tf_static', 'tf_static')]
+        ('/tf_static', 'tf_static')]
 
     # Create our own temporary YAML files that include substitutions
     param_substitutions = {
@@ -78,7 +77,7 @@ def generate_launch_description():
         description='Automatically startup the nav2 stack')
 
     declare_use_composition_cmd = DeclareLaunchArgument(
-        'use_composition', default_value='True',
+        'use_composition', default_value='False',
         description='Whether to use composed bringup')
 
     declare_use_respawn_cmd = DeclareLaunchArgument(
@@ -88,12 +87,16 @@ def generate_launch_description():
     declare_log_level_cmd = DeclareLaunchArgument(
         'log_level', default_value='info',
         description='log level')
-    
+
+    declare_use_rviz_cmd = DeclareLaunchArgument(
+        'use_rviz', default_value='false',
+        description='Whether to launch RViz2')
+
     bringup_lidar_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'bringup_lidar.launch.py')),
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'bringup_lidar_ekf.launch.py')),
         launch_arguments={
             'use_rviz': LaunchConfiguration('use_rviz'),
-            'rviz_config': 'nav_2d',  
+            'rviz_config': 'nav_2d',
         }.items()
     )
     
@@ -153,10 +156,12 @@ def generate_launch_description():
     ld.add_action(declare_use_composition_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
+    ld.add_action(declare_use_rviz_cmd)
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(bringup_lidar_launch)
     ld.add_action(robot_pose_publisher_launch)
-    ld.add_action(bringup_cmd_group)
+    # Delay SLAM+Nav2 by 5s so rf2o has time to publish TF before SLAM starts
+    ld.add_action(TimerAction(period=5.0, actions=[bringup_cmd_group]))
     return ld
 

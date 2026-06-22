@@ -96,7 +96,9 @@ def list_ros_launch_params():
 	return response
 
 def serve_static(path):
-	return send_from_directory(app.static_folder, path)
+	response = make_response(send_from_directory(app.static_folder, path))
+	response.headers['Cache-Control'] = 'no-store'
+	return response
 
 class RequestHandler(WSGIRequestHandler):
 	def log(self, type, message, *args):

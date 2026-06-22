@@ -46,10 +46,6 @@ function sendMessage(pos, delta){
 	let yaw = Math.atan2(delta.y, -delta.x);
 	let quat = Quaternion.fromEuler(yaw, 0, 0, 'ZXY');
 
-	const currentTime = new Date();
-	const currentTimeSecs = Math.floor(currentTime.getTime() / 1000);
-	const currentTimeNsecs = (currentTime.getTime() % 1000) * 1e6;
-
 	const publisher = new ROSLIB.Topic({
 		ros: rosbridge.ros,
 		name: topic,
@@ -59,8 +55,8 @@ function sendMessage(pos, delta){
 	const poseMessage = new ROSLIB.Message({
 		header: {
 			stamp: {
-				sec: currentTimeSecs,
-				nanosec: currentTimeNsecs
+				sec: 0,
+				nanosec: 0
 			},
 			frame_id: tf.fixed_frame
 		},

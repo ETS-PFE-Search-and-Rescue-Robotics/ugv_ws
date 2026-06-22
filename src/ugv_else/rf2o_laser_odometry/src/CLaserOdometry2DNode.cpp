@@ -183,7 +183,7 @@ void CLaserOdometry2DNode::process()
       if (!warning_issued)
       {
           RCLCPP_WARN(get_logger(), "Waiting for laser_scans....");
-          warning_issued = true; // ÉèÖÃ¾¯¸æ±êÖ¾
+          warning_issued = true; // ï¿½ï¿½ï¿½Ã¾ï¿½ï¿½ï¿½ï¿½Ö¾
       }
   }
 }

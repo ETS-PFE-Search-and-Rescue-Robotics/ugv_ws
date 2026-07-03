@@ -86,7 +86,8 @@ def generate_launch_description():
         }],
     )
 
-    # Wheel encoder odometry — debug/reference only, not fused into anything
+    # Wheel encoder odometry — fused into EKF (position, looser covariance than rf2o)
+    # when use_ekf:=true; otherwise published for reference only.
     base_node = Node(
         package='ugv_base_node',
         executable='base_node',
@@ -106,6 +107,22 @@ def generate_launch_description():
             'output_topic':   '/odom_rf2o_fixed',
             'pose_cov_diag':  [0.05, 0.05, 1e6, 1e6, 1e6, 0.05],
             'twist_cov_diag': [0.05, 1e6,  1e6, 1e6, 1e6, 0.05],
+        }]
+    )
+
+    # Wheel odom covariance fix — looser than rf2o's so the EKF leans on rf2o
+    # to correct wheel drift, while wheel odom smooths motion between rf2o updates.
+    wheel_cov_fix_node = Node(
+        condition=IfCondition(use_ekf),
+        package='ugv_bringup',
+        executable='odom_covariance_fix',
+        name='wheel_covariance_fix',
+        output='screen',
+        parameters=[{
+            'input_topic':    '/odom_wheel',
+            'output_topic':   '/odom_wheel_fixed',
+            'pose_cov_diag':  [0.5, 0.5, 1e6, 1e6, 1e6, 0.5],
+            'twist_cov_diag': [0.5, 1e6, 1e6, 1e6, 1e6, 0.5],
         }]
     )
 
@@ -135,6 +152,7 @@ def generate_launch_description():
             rf2o_with_ekf,
             rf2o_standalone,
             odom_cov_fix_node,
+            wheel_cov_fix_node,
             base_node,
             ekf_node,
         ]),

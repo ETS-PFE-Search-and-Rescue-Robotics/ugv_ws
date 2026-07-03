@@ -1,6 +1,7 @@
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
@@ -16,6 +17,12 @@ def generate_launch_description():
         'rviz_config', default_value='bringup',
         description='Choose which rviz configuration to use'
     )
+    use_ekf_arg = DeclareLaunchArgument(
+        'use_ekf', default_value='false',
+        description='Fuse rf2o through EKF (true) or use rf2o directly as /odom (false)'
+    )
+
+    use_ekf = LaunchConfiguration('use_ekf')
 
     robot_state_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -43,10 +50,9 @@ def generate_launch_description():
         )
     )
 
-    # publish_tf=False: EKF owns the odom→base_footprint TF.
-    # Defined as a Node directly (not via IncludeLaunchDescription) so we can
-    # override publish_tf without modifying the original rf2o launch file.
-    rf2o_laser_odometry_launch = Node(
+    # use_ekf=true: EKF owns the odom→base_footprint TF, rf2o only publishes /odom_rf2o
+    rf2o_with_ekf = Node(
+        condition=IfCondition(use_ekf),
         package='rf2o_laser_odometry',
         executable='rf2o_laser_odometry_node',
         name='rf2o_laser_odometry',
@@ -62,9 +68,25 @@ def generate_launch_description():
         }],
     )
 
-    # base_node: wheel encoder odometry kept for debug/fallback only.
-    # pub_odom_tf=false → EKF publishes the TF.
-    # Remapped to /odom_wheel so it doesn't conflict with EKF's /odom output.
+    # use_ekf=false: rf2o publishes TF and /odom directly, no EKF in the loop
+    rf2o_standalone = Node(
+        condition=UnlessCondition(use_ekf),
+        package='rf2o_laser_odometry',
+        executable='rf2o_laser_odometry_node',
+        name='rf2o_laser_odometry',
+        output='screen',
+        parameters=[{
+            'laser_scan_topic': '/scan',
+            'odom_topic': '/odom',
+            'publish_tf': True,
+            'base_frame_id': 'base_footprint',
+            'odom_frame_id': 'odom',
+            'init_pose_from_topic': '',
+            'freq': 20.0,
+        }],
+    )
+
+    # Wheel encoder odometry — debug/reference only, not fused into anything
     base_node = Node(
         package='ugv_base_node',
         executable='base_node',
@@ -72,9 +94,9 @@ def generate_launch_description():
         remappings=[('/odom', '/odom_wheel')]
     )
 
-    # Relays /odom_rf2o with realistic covariance injected → /odom_rf2o_fixed.
-    # rf2o publishes all-zero covariance which causes the EKF to blow up.
+    # Covariance fix + EKF — only when use_ekf:=true
     odom_cov_fix_node = Node(
+        condition=IfCondition(use_ekf),
         package='ugv_bringup',
         executable='odom_covariance_fix',
         name='rf2o_covariance_fix',
@@ -87,10 +109,8 @@ def generate_launch_description():
         }]
     )
 
-    # EKF fuses /odom_rf2o_fixed (laser odometry with fixed covariance).
-    # Publishes /odometry/filtered → remapped to /odom so Nav2 sees it directly.
-    # Also publishes the odom→base_footprint TF (publish_tf: true in ekf.yaml).
     ekf_node = Node(
+        condition=IfCondition(use_ekf),
         package='robot_localization',
         executable='ekf_node',
         name='ekf_filter_node',
@@ -102,6 +122,7 @@ def generate_launch_description():
     return LaunchDescription([
         use_rviz_arg,
         rviz_config_arg,
+        use_ekf_arg,
         robot_state_launch,
         bringup_node,
         driver_node,
@@ -111,7 +132,8 @@ def generate_launch_description():
         # Without this delay, rf2o gets its first scan before base_footprint exists
         # in the TF tree, fails silently, and never publishes odometry.
         TimerAction(period=3.0, actions=[
-            rf2o_laser_odometry_launch,
+            rf2o_with_ekf,
+            rf2o_standalone,
             odom_cov_fix_node,
             base_node,
             ekf_node,

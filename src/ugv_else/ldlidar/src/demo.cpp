@@ -161,8 +161,8 @@ void  ToLaserscanMessagePublish(ldlidar::Points2D& src,  double lidar_spin_freq,
     return;
   }
   // Adjust the parameters according to the demand
-  angle_min = 0;
-  angle_max = (2 * M_PI);
+  angle_min = -M_PI;
+  angle_max = M_PI;
   range_min = 0.02;
   range_max = 25;
   int beam_size = static_cast<int>(src.size());
@@ -204,6 +204,7 @@ void  ToLaserscanMessagePublish(ldlidar::Points2D& src,  double lidar_spin_freq,
       }
 
       float angle = ANGLE_TO_RADIAN(dir_angle); // Lidar angle unit form degree transform to radian
+      if (angle > M_PI) angle -= 2 * M_PI;    // wrap 0→2π range into -π→+π (REP-117)
       int index = static_cast<int>(ceil((angle - angle_min) / angle_increment));
       if (index < beam_size) {
         if (index < 0) {

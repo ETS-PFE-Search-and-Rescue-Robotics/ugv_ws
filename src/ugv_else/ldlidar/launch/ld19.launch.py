@@ -34,7 +34,7 @@ def generate_launch_description():
         {'frame_id': 'base_lidar_link'},
         {'port_name': '/dev/ttyACM0'},
         {'port_baudrate': 230400},
-        {'laser_scan_dir': True},
+        {'laser_scan_dir': False},
         {'enable_angle_crop_func': True},
         {'angle_crop_min': 225.0},
         {'angle_crop_max': 315.0}

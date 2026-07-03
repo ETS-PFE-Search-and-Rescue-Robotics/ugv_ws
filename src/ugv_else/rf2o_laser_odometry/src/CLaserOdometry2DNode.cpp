@@ -29,8 +29,6 @@ CLaserOdometry2DNode::CLaserOdometry2DNode(): Node("CLaserOdometry2DNode")
   this->get_parameter("laser_scan_topic", laser_scan_topic);
   this->declare_parameter<std::string>("odom_topic", "/odom_rf2o");
   this->get_parameter("odom_topic", odom_topic);
-  this->declare_parameter<std::string>("imu_topic", "/imu/data");
-  this->get_parameter("imu_topic", imu_topic);
   this->declare_parameter<std::string>("base_frame_id", "base_link");
   this->get_parameter("base_frame_id", base_frame_id);
   this->declare_parameter<std::string>("odom_frame_id", "odom");
@@ -48,7 +46,6 @@ CLaserOdometry2DNode::CLaserOdometry2DNode(): Node("CLaserOdometry2DNode")
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*buffer_);
   odom_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(this);
   odom_pub  = this->create_publisher<nav_msgs::msg::Odometry>(odom_topic, 5);
-  imu_pub  = this->create_publisher<sensor_msgs::msg::Imu>(imu_topic, 5);
   laser_sub = this->create_subscription<sensor_msgs::msg::LaserScan>(laser_scan_topic,rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile(),
       std::bind(&CLaserOdometry2DNode::LaserCallBack, this, std::placeholders::_1));
   
@@ -89,7 +86,7 @@ void CLaserOdometry2DNode::LaserCallBack(const sensor_msgs::msg::LaserScan::Shar
     // Keep in memory the last received laser_scan
     last_scan = *new_scan;
     rf2o_ref.current_scan_time = last_scan.header.stamp;
-    
+
     if (rf2o_ref.first_laser_scan == false)
     {
       // copy laser range data to rf2o internal variable
@@ -179,12 +176,7 @@ void CLaserOdometry2DNode::process()
   else
   {
     // This is a warning. We depend on laser scans, so no meaning running faster than scan freq.
-//    RCLCPP_WARN(get_logger(), "Waiting for laser_scans....");
-      if (!warning_issued)
-      {
-          RCLCPP_WARN(get_logger(), "Waiting for laser_scans....");
-          warning_issued = true; // ���þ����־
-      }
+    RCLCPP_WARN(get_logger(), "Waiting for laser_scans....");
   }
 }
 
@@ -222,8 +214,8 @@ void CLaserOdometry2DNode::publish()
   odom.header.stamp = rf2o_ref.last_odom_time;    // the time of the last scan used!
   odom.header.frame_id = odom_frame_id;
   //set the position
-  odom.pose.pose.position.x = -1.0*rf2o_ref.robot_pose_.translation()(0);
-  odom.pose.pose.position.y = -1.0*rf2o_ref.robot_pose_.translation()(1);
+  odom.pose.pose.position.x = rf2o_ref.robot_pose_.translation()(0);
+  odom.pose.pose.position.y = rf2o_ref.robot_pose_.translation()(1);
   odom.pose.pose.position.z = 0.0;
   odom.pose.pose.orientation = quaternion;
   //set the velocity
@@ -233,15 +225,7 @@ void CLaserOdometry2DNode::publish()
   odom.twist.twist.angular.z = rf2o_ref.ang_speed;   //angular speed
   //publish the message
   odom_pub->publish(odom);
-  
-  sensor_msgs::msg::Imu imu;
-  
-  imu.header.stamp = rf2o_ref.last_odom_time;
-  imu.header.frame_id = odom_frame_id;
-  imu.orientation = quaternion;
-  
-  imu_pub->publish(imu);
-  
+
   // 2. publish over tf? (one one node should publish this transform!)
   if (publish_tf)
   {
@@ -250,8 +234,8 @@ void CLaserOdometry2DNode::publish()
     odom_trans.header.stamp = rf2o_ref.last_odom_time;    // the time of the last scan used!
     odom_trans.header.frame_id = odom_frame_id;
     odom_trans.child_frame_id = base_frame_id;
-    odom_trans.transform.translation.x = -1.0*rf2o_ref.robot_pose_.translation()(0);
-    odom_trans.transform.translation.y = -1.0*rf2o_ref.robot_pose_.translation()(1);
+    odom_trans.transform.translation.x = rf2o_ref.robot_pose_.translation()(0);
+    odom_trans.transform.translation.y = rf2o_ref.robot_pose_.translation()(1);
     odom_trans.transform.translation.z = 0.0;
     odom_trans.transform.rotation = quaternion;
     //send the transform

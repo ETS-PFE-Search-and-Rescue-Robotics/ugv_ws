@@ -92,11 +92,16 @@ def generate_launch_description():
         'use_rviz', default_value='false',
         description='Whether to launch RViz2')
 
+    declare_use_ekf_cmd = DeclareLaunchArgument(
+        'use_ekf', default_value='false',
+        description='Fuse rf2o through EKF (true) or use rf2o directly as /odom (false)')
+
     bringup_lidar_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'bringup_lidar_ekf.launch.py')),
         launch_arguments={
             'use_rviz': LaunchConfiguration('use_rviz'),
             'rviz_config': 'nav_2d',
+            'use_ekf': LaunchConfiguration('use_ekf'),
         }.items()
     )
     
@@ -157,6 +162,7 @@ def generate_launch_description():
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
     ld.add_action(declare_use_rviz_cmd)
+    ld.add_action(declare_use_ekf_cmd)
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(bringup_lidar_launch)

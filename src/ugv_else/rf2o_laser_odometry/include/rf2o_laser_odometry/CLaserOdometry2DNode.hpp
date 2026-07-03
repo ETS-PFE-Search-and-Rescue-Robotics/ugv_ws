@@ -26,13 +26,12 @@ public:
   double              freq;
   std::string         laser_scan_topic;
   std::string         odom_topic;
-  std::string         imu_topic;
   std::string         base_frame_id;
   std::string         odom_frame_id;
   std::string         init_pose_from_topic;
+
   sensor_msgs::msg::LaserScan                     last_scan;
   bool                                            GT_pose_initialized;
-  bool                                            warning_issued;
   std::shared_ptr<tf2_ros::Buffer>                buffer_;
   std::shared_ptr<tf2_ros::TransformListener>     tf_listener_;  
   std::unique_ptr<tf2_ros::TransformBroadcaster>  odom_broadcaster;
@@ -42,7 +41,6 @@ public:
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr  laser_sub;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr      initPose_sub;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr         odom_pub;
-  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr         imu_pub;
 
   // CallBacks
   void LaserCallBack(const sensor_msgs::msg::LaserScan::SharedPtr new_scan);

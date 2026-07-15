@@ -16,7 +16,7 @@ slam_toolbox:
     debug_logging: false
     throttle_scans: 2
     transform_publish_period: 0.02
-    map_update_interval: 5.0
+    map_update_interval: 10.0
     resolution: 0.05
     min_laser_range: 0.0
     max_laser_range: 20.0
@@ -181,6 +181,7 @@ local_costmap:
       publish_frequency: 2.0
       global_frame: odom
       robot_base_frame: base_footprint
+      transform_tolerance: 0.5
       use_sim_time: False
       rolling_window: true
       width: 5
@@ -219,6 +220,7 @@ global_costmap:
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_footprint
+      transform_tolerance: 0.5
       use_sim_time: False
       robot_radius: 0.1
       resolution: 0.05
@@ -295,7 +297,7 @@ behavior_server:
       plugin: "nav2_behaviors/AssistedTeleop"
     global_frame: odom
     robot_base_frame: base_footprint
-    transform_tolerance: 0.1
+    transform_tolerance: 0.5
     use_sim_time: false
     simulate_ahead_time: 2.0
     max_rotational_vel: 0.5

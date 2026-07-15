@@ -34,7 +34,11 @@ def generate_launch_description():
         }.items()
     )
 
+    # Reads ESP32 telemetry (encoders/IMU/voltage) over serial — only needed to
+    # feed wheel odometry into the EKF. In rf2o-only mode it just contends with
+    # ugv_driver for the serial port (double-open bug), so don't start it.
     bringup_node = Node(
+        condition=IfCondition(use_ekf),
         package='ugv_bringup',
         executable='ugv_bringup',
     )
@@ -87,8 +91,9 @@ def generate_launch_description():
     )
 
     # Wheel encoder odometry — fused into EKF (position, looser covariance than rf2o)
-    # when use_ekf:=true; otherwise published for reference only.
+    # when use_ekf:=true; nothing consumes it in rf2o-only mode.
     base_node = Node(
+        condition=IfCondition(use_ekf),
         package='ugv_base_node',
         executable='base_node',
         parameters=[{'pub_odom_tf': False}],

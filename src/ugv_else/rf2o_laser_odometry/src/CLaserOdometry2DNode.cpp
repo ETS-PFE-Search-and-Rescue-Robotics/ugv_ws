@@ -97,8 +97,14 @@ void CLaserOdometry2DNode::LaserCallBack(const sensor_msgs::msg::LaserScan::Shar
     }
     else
     {
-      // Initialize module on first scan (from laser params)
-      setLaserPoseFromTf();
+      // Initialize module on first scan (from laser params).
+      // The laser->base TF must be available: initializing with the identity
+      // fallback silently rotates all odometry by the lidar mounting angle.
+      if (!setLaserPoseFromTf())
+      {
+        RCLCPP_WARN(get_logger(), "Laser pose TF not yet available, retrying on next scan");
+        return;
+      }
       rf2o_ref.init(last_scan, initial_robot_pose.pose.pose);
       rf2o_ref.first_laser_scan = false;
     }
@@ -123,7 +129,7 @@ bool CLaserOdometry2DNode::setLaserPoseFromTf()
   catch (tf2::TransformException &ex)
   {
     RCLCPP_ERROR(get_logger(), "%s",ex.what());
-    retrieved = false;
+    return false;
   }
 
   // Keep this transform as Eigen Matrix3d
